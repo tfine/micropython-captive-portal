@@ -9,7 +9,7 @@ ap.active(True)
 ap.config(essid="NeoPixel WIFI!", authmode=1)
 
 np = neopixel.NeoPixel(machine.Pin(4), 1) #one neopixel on port 4
-np[0] = (220, 110, 50)
+np[0] = (255, 1, 1) #init value
 np.write()
 
 print('starting')
