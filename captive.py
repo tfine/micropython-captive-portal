@@ -2,28 +2,22 @@ import socket
 import network
 import time
 import machine
+import neopixel
 
 ap = network.WLAN(network.AP_IF)
 ap.active(True)
-ap.config(essid="Change my LED", password="bananabanana", authmode=4) #authmode=1 == no pass
+ap.config(essid="NeoPixel WIFI!", authmode=1)
 
-# PINs (5, 4, 0)
-r = machine.Pin(5, machine.Pin.OUT, machine.Pin.PULL_UP)
-g = machine.Pin(4, machine.Pin.OUT, machine.Pin.PULL_UP)
-b = machine.Pin(0, machine.Pin.OUT, machine.Pin.PULL_UP)
+np = neopixel.NeoPixel(machine.Pin(4), 1) #one neopixel on port 4
+np[0] = (220, 110, 50)
+np.write()
 
-r.high()
-g.high()
-b.high()
-
-
-
-
+print('starting')
 
 CONTENT = b"""\
 HTTP/1.0 200 OK
 
-<!doctype html>
+<!DOCTYPE html>
 <html>
     <head>
         <title>MicroPython Captive LED Portal</title>
@@ -31,17 +25,15 @@ HTTP/1.0 200 OK
         <meta charset="utf8">
     </head>
     <body>
-        <h1>Change my LED Color!!!</h1>
-        <p>You are my #{:d} user!</p>
-        <form action="/led">
-            <input type="checkbox" name="r" {}>Red<br>
-            <input type="checkbox" name="g" {}>Green<br>
-            <input type="checkbox" name="b" {}>Blue<br>
+        <h1>Change the NeoPixel Color</h1>
+        <br />
+            <form action="/led">
+            <input type="number" name="red" min="0" max="255"> Red <br>
+            <input type="number" name="green" min="0" max="255"> Green <br>
+            <input type="number" name="blue" min="0" max="255"> Blue <br>
             <input type="submit" value="change">
         </form>
-
         <script>
-
         </script>
     </body>
 </html>
@@ -97,11 +89,8 @@ def start():
     s.settimeout(2)
     print("Web Server: Listening http://{}:80/".format(ip))
 
-    counter = 0
-
     try:
         while 1:
-           
 
             # DNS Loop
             print("Before DNS...")
@@ -133,57 +122,38 @@ def start():
                     if h == b"" or h == b"\r\n" or h == None:
                         break
                     print(h)
-                
-                # Change LED based on request variables
+
+
                 request_url = req[4:-11]
                 api = request_url[:5]
+                print(api)
+                d = {}
                 if api == b'/led?':
                     params = request_url[5:]
+                    print(params)
+
+
                     try:
                         d = {key: value for (key, value) in [x.split(b'=') for x in params.split(b'&')]}
                     except:
                         d = {}
 
-                    if  b'b' in d.keys():
-                        b.high()
-                    else:
-                        b.low()
+                    if b'red' in d.keys(): #check if color present
+                        print('CHANGING COLOR')
+                        r = int(d[b'red'])
+                        g = int(d[b'green'])
+                        b = int(d[b'blue'])
+                        np[0] = (r, g, b)
+                        np.write()
+                        time.sleep_ms(1000)
 
-                    if b'r' in d.keys():
-                        r.high()
-                    else:
-                        r.low()
-
-                    if b'g' in d.keys():
-                        g.high()
-                    else:
-                        g.low()
-
-                # Respond
-                # LED Management
-                if r.value() == 1:
-                    rv = "checked"
-                else:
-                    rv = ""
-                
-                if g.value() == 1:
-                    gv = "checked"
-                else:
-                    gv = ""
-                
-                if b.value() == 1:
-                    bv = "checked"
-                else:
-                    bv = ""
-
-                client_stream.write(CONTENT.format(counter,rv,gv,bv))
-
+                client_stream.write(CONTENT)
                 client_stream.close()
-                counter += 1
+
             except:
                 print("timeout for web... moving on...")
             print("loop")
-            time.sleep_ms(300)
+            time.sleep_ms(100)
     except KeyboardInterrupt:
         print('Closing')
     udps.close()
